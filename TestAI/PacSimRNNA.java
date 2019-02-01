@@ -64,7 +64,7 @@ public class PacSimRNNA implements PacAction {
          System.out.println("Cost Table :");
          for (int i = 0; i < costTable.length; i++){
             for(int o = 0; o < costTable[i].length; o++){
-               System.out.printf("%d ", costTable[i][o] );
+               System.out.printf("%3d", costTable[i][o] );
             }
             System.out.println();
          }
@@ -80,22 +80,41 @@ public class PacSimRNNA implements PacAction {
          // use List food to create a first step
          rnnaPaths = new ArrayList<RNNAPath>();
          for (int i = 1; i < dest.size(); i++) {
-            rnnaPaths.add(new RNNAPath (dest.get(i), costTable, costTable[0][i], 0, dest.size()) );
+            rnnaPaths.add(new RNNAPath (dest.get(i), costTable, 0, i, dest.size()) );
          }
             
          int step = 1;
-         Collections.sort(rnnaPaths);
-         printPopulation(step);
+         printPopulation(step, rnnaPaths);
 
          while ( step < PacUtils.numFood(grid) ) { // perform population steps until we've done enough steps for each food pellet.
          // Note to self: make sure you mark used pellets.
             //TODO: iterate through steps of creating an rnna path
             for (int i = 0; i < rnnaPaths.size(); i++) {
-               List<Point> nearestFood = rnnaPaths.get(i).findNextNearestPellets();
+               List<Integer> nearestFoods = rnnaPaths.get(i).findNextNearestPellets();
+
+
+               System.out.println("Next points : " + nearestFoods.size());
+
                
+               if ( nearestFoods.size() > 1 ) { // Here we check if we have more than 1 path; if so iterate a copy for each possible path.
+                  for (int j = 1; j < nearestFoods.size(); j++){ //start at 1 since we're going to do the first path anyway.
+                     RNNAPath tempCopy = rnnaPaths.get(i);
+                     
+                     // tempCopy.addPointToPath(dest.get(nearestFoods.get(j)), nearestFoods.get(j));
+                     System.out.println(tempCopy);
+                     // rnnaPaths.add(0, tempCopy);
+                  }
+               } else if ( nearestFoods.size() == 0 ) { // path already completed, no need to push further
+                  continue; 
+               }
+               rnnaPaths.get(i).addPointToPath(dest.get(nearestFoods.get(0)), nearestFoods.get(0));
+               System.out.println(rnnaPaths.get(i));
+
             }
             step++;
+            printPopulation(step, rnnaPaths);
          }
+         printPopulation(step, rnnaPaths);
 
 
       }
@@ -123,10 +142,12 @@ public class PacSimRNNA implements PacAction {
       
    }
 
-   public void printPopulation (int step){
+   public void printPopulation (int step, List<RNNAPath> rp){
+      List<RNNAPath> copy = rp;
+      Collections.sort(copy);
       System.out.printf("Population at step: %d\n", step);
-      for (int i = 0; i < rnnaPaths.size(); i++){
-         System.out.printf( "%d : %s", i, rnnaPaths.get(i).toString() );
+      for (int i = 0; i < copy.size(); i++){
+         System.out.printf( "%d : %s\n", i, copy.get(i).toString() );
       }
       return;
    }
@@ -139,36 +160,47 @@ class RNNAPath implements Comparable<RNNAPath> {
    private int totalCost = 0;           // total cost of the current path
    private int[][] costTable;
    private boolean[] usedIndex;
+   private int lastIndex;
 
-   public RNNAPath (Point pt, int[][] costTable, int cCost, int ind, int size) {
+   public RNNAPath (Point pt, int[][] costTable, int ind, int j, int size) {
       this.path = new ArrayList<Point>(); 
       this.costTable = costTable;
       this.costBreakup = new ArrayList<Integer>(); 
       this.usedIndex = new boolean[size];
-      addPointToPath(pt, cCost, ind );
+      this.usedIndex[ind] = true; //Obviously set our start point as visited in terms of cost table analysis
+      this.lastIndex = ind;
+      addPointToPath(pt, j );
    }
 
    // function to add path and it's cost to the current class
-   public void addPointToPath (Point a, int cost, int index){
+   public void addPointToPath (Point a, int newIndex){
       this.path.add(a);
-      this.costBreakup.add(cost);
-      this.totalCost += cost;
-      // this.lastPoint = a;
-      this.usedIndex[index] = true; //since we've used this index row/col, mark it in array.
-      // this.pointsLeft[index] = false; //remove point of pellet we're adding to the path.
+      System.out.printf("\n( %d , %d )\n", lastIndex, newIndex);
+      this.costBreakup.add(costTable[this.lastIndex][newIndex]);
+      // this.costBreakup.add(costTable[newIndex][this.lastIndex]);
+      this.totalCost += costTable[this.lastIndex][newIndex];
+      // this.totalCost += costTable[newIndex][this.lastIndex];
+      this.usedIndex[newIndex] = true; //since we've used this index row/col, mark it in array.
+      this.lastIndex = newIndex;
       return;
    }
 
-   /* function that will return a List of the nearest Pellets.
-    * This runs a BFS scan that will stop once it finds a pellet,
-    * and will gather all other pellets it can using the distance
-    * it took to find the first pellet. We can safely assume that
-    * it will find the nearest pellet through the maze.
-   */
-   public List<Point> findNextNearestPellets () { 
-      List<Point> pellets = new ArrayList<Point>();
-      System.out.println("Current pellet: " + path.get(path.size()-1).toString() );
-      return pellets;
+   public List<Integer> findNextNearestPellets () { 
+      //TODO: Loop through size of used array (skipping where it's true) while looking at the cost table to find the lowest costs
+      //      if it's less than min, clear list and set new min; if equal add it to the list.
+      // System.out.println(costTable[lastIndex][0]);
+      List<Integer> pellets = new ArrayList<Integer>();
+      int min = Integer.MAX_VALUE;
+      for (int i = 0; i < usedIndex.length; i++) {
+         if ( usedIndex[i] == true || costTable[lastIndex][i] == 0) continue;     //skipped if we've already used this point & avoid using our current pos
+         if ( costTable[lastIndex][i] < min ) { 
+            pellets.clear();
+            min = costTable[lastIndex][i];
+            pellets.add(i);
+         }else if ( costTable[lastIndex][i] == min)
+            pellets.add(i);
+      }
+      return pellets;   //returns list indexes for use in dest
    }
 
    @Override
@@ -184,7 +216,7 @@ class RNNAPath implements Comparable<RNNAPath> {
    public String toString(){
       String pts = "";
       for (int i = 0; i < path.size(); i++){
-         pts += "[(" + path.get(i).x + "," + path.get(i).y + ")," + costBreakup.get(i) + "]\n";
+         pts += "[(" + path.get(i).x + "," + path.get(i).y + ")," + costBreakup.get(i) + "]";
       }
       return "cost=" + this.totalCost + " : " + pts;
    }
