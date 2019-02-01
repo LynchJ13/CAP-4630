@@ -99,6 +99,7 @@ public class PacSimRNNA implements PacAction {
                if ( nearestFoods.size() > 1 ) { // Here we check if we have more than 1 path; if so iterate a copy for each possible path.
                   for (int j = 1; j < nearestFoods.size(); j++){ //start at 1 since we're going to do the first path anyway.
                      RNNAPath tempCopy = rnnaPaths.get(i);
+		  // TODO: Create a shallow copy of the current rnna path instead of this.
                      
                      // tempCopy.addPointToPath(dest.get(nearestFoods.get(j)), nearestFoods.get(j));
                      System.out.println(tempCopy);
