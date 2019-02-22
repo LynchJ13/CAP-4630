@@ -22,9 +22,7 @@ public class PacSimMinimax implements PacAction {
 	//optional classes
 	private final int WIN_VALUE = 30;
 	private final int LOSS_VALUE = -30;
-	private final int[] dX = {  0, -1, 0, 1 }; //Transversal Order: UP, LEFT, DOWN, RIGHT
-	private final int[] dY = { -1,  0, 1, 0 };
-	private static int dpth;
+	private static int depthCount;
 	private static int fearCounter;
 
 	public PacSimMinimax( int depth, String fname, int te, int gran, int max ){
@@ -37,7 +35,7 @@ public class PacSimMinimax implements PacAction {
 	public static void main(String[] args) { 
 		String fname = args[0];
 		int depth = Integer.parseInt(args[1]);
-		dpth = depth;
+		depthCount = depth;
 		int te = 0;
 		int gr = 0;
 		int ml = 0;
@@ -68,15 +66,23 @@ public class PacSimMinimax implements PacAction {
 	public PacFace action( Object state ) {
 		PacCell[][] grid = (PacCell[][]) state;
 		PacFace newFace = null;
+
 		PacmanCell pc = PacUtils.findPacman ( grid );
-		/*List<Point> ghosts = PacUtils.findGhosts ( grid );
-		
+		List<PacCell> currPacCells = new ArrayList<PacCell>();
+
+		List<Point> ghosts = PacUtils.findGhosts ( grid );
 		GhostCell blinky = new BlinkyCell(ghosts.get(0).x, ghosts.get(0).y) ;
-		GhostCell inky = new InkyCell(ghosts.get(1).x, ghosts.get(1).y) ;*/
+		GhostCell inky = new InkyCell(ghosts.get(1).x, ghosts.get(1).y) ;
 
-		// List<PacCell[][]> boardIterations = new ArrayList<PacCell[][]>();/
+		// System.out.println( pc.getLoc() );
+		currPacCells.add( pc.clone() ); // add pacman
+		currPacCells.add( blinky.clone() ); // blinky
+		currPacCells.add( inky.clone() ); // inky
 
-		List<Point> nextPoints = calcMinimax(grid);
+		// currPoints.forEach( (n) -> System.out.println( n ) );
+
+		List<PacCell> nextPacCells = calcMinimax( grid, 0, 0, currPacCells );
+		System.out.println("Cycle Complete");
 
 		
 		if ( pc == null ) return null;
@@ -85,60 +91,97 @@ public class PacSimMinimax implements PacAction {
 		return newFace;
 	}
 
-	List<Point> calcMinimax ( PacCell[][] grid ){
-		List<Point> newPoints = new ArrayList<Point>();
-		List<PacCell[][]> boardIterations = new ArrayList<PacCell[][]>();
-		boardIterations.add( PacUtils.cloneGrid( grid ) );// create initial copy of the grid
+	//recursive function that runs in 3-tick intervals for pacman & ghosts
+	// every 3rd tick results in 1 move,
+/*	PacCell calcMinimax ( PacCell[][] grid , int depth, int tick, PacCell cell ){
+	 	// If we've hit the depth, just return the points we already have
+		if ( depth == depthCount ){
+			// System.out.println(evaluateBoard(grid, cells));
 
-		for ( int d = 0; d < dpth; d++ ) { // begin to iterate through each depth.
-			System.out.println("Current Depth: " + d);
-			for ( int i = 0 ; i < boardIterations.size(); i++ ) { //iterate through each board
-				for ( int dir = 0; dir < dX.length; dir++ ){ //iterate through each cardinal direction 
-					if ( d % 2 == 0 ) { //even depth, so find min
+			return cell;
+		}
+		
+		if (tick > 0 ){
+			List<Point> ghosts = PacUtils.findGhosts ( grid );
+			cell = grid[ghosts.get(tick-1).x][ghosts.get(tick-1).y];
+		} else {
+			cell = PacUtils.findPacman( grid );
+		}
+		System.out.println(cell.getClass());
 
-					} else { //odd depth => find max
+		if ( tick == 2 )
+			return calcMinimax(grid, depth+1, 0, cell);
+		return calcMinimax( grid, depth, tick+1, cell );
 
-					}
+	}*/
 
+	//TODO: work on the return type for this? COULD PROBABLY MAKE THIS x1000000 EASIER
+	List<PacCell> calcMinimax ( PacCell[][] grid , int depth, int tick, List<PacCell> cells ){
+	 	// If we've hit the depth, just return the list of cells that has the best score given the current depth.
+		if ( depth == depthCount || tick == 3  ){
+			System.out.println(evaluateBoard(grid, cells));
+
+			return cells;
+		}
+		
+		System.out.printf("Depth: %d\n", depth);
+		// cells.forEach( (n) -> System.out.println("\t"+n + " : " + n.getLoc()));
+		
+
+		// iterate through our wanted targets
+		// TODO: The below method doesn't properly move BOTH of the ghosts on their turns
+		// Change the 
+		//
+		PacCell[][] newGrid = new PacCell[grid.length][grid[0].length];
+		List<PacCell> nextTgts = new ArrayList<PacCell>(cells);
+
+		for ( PacFace c : PacFace.values() ) { //Iterate through each cardinal direction
+			PacCell neighbor = PacUtils.neighbor( c, cells.get(tick), grid );
+
+			// skips wallcells as ghosts, but also skip house cells if pacman.
+			System.out.printf("   Testing neighbor(%d): %s...", tick, c.toString() );
+			if ( neighbor instanceof pacsim.WallCell || (cells.get(tick) instanceof pacsim.PacmanCell && neighbor instanceof pacsim.HouseCell) ){
+				System.out.println("Fail");
+				continue;
+			}
+			System.out.println("Success");
+			if ( cells.get(tick) instanceof pacsim.PacmanCell ){
+				// System.out.println( PacUtils.findPacman(PacUtils.movePacman( cells.get(t).getLoc(), neighbor.getLoc(), newGrid ) ).getLoc() ) ;
+				newGrid = PacUtils.movePacman( cells.get(tick).getLoc(), neighbor.getLoc(), grid );
+				nextTgts.set(tick, PacUtils.findPacman( newGrid ) );
+				nextTgts = calcMinimax( newGrid, depth, tick+1, nextTgts);
+
+			} else { // ghost move
+				newGrid = PacUtils.moveGhost( cells.get(tick).getLoc(), neighbor.getLoc(), grid );
+				if ( tick == 1 ) { //blinky 
+					nextTgts.set(tick, new BlinkyCell(neighbor.getLoc().x, neighbor.getLoc().y) );
+					nextTgts = calcMinimax( newGrid, depth, tick+1, nextTgts);
+				} else { // inky
+					nextTgts.set(tick, new InkyCell(neighbor.getLoc().x, neighbor.getLoc().y) );
+					nextTgts = calcMinimax( newGrid, depth+1, tick+1, nextTgts);
 				}
 			}
-		}
-		return newPoints;
+		}			
+
+		// return calcMinimax( newGrid, depth+1, 0, nextTgts);
+		return cells;
+
 	}
 
-	// run after every depth calculation so pacman predict where he should be going
-	PacCell[][] iterateGhosts ( PacCell[][] grid ) {
-		PacCell[][] updatedGrid = new PacCell[grid.length][grid[0].length];
-		if ( grid != null )
-			updatedGrid = copyGrid( grid );
-		List<Point> ghosts = PacUtils.findGhosts ( grid );
-		
-		GhostCell blinky = new BlinkyCell(ghosts.get(0).x, ghosts.get(0).y) ;
-		GhostCell inky = new InkyCell(ghosts.get(1).x, ghosts.get(1).y) ;
-
-
-		// System.out.println("Updated: " + updatedGrid[0][0]);
-		return updatedGrid;
+	public int evaluateBoard( PacCell[][] grid, List<PacCell> cells ) {
+		System.out.println(cells.get(0).getLoc() );
+		System.out.println(cells.get(1).getLoc() );
+		System.out.println(cells.get(2).getLoc() );
+		int distPellet = BFSPath.getPath( grid, cells.get(0).getLoc(), PacUtils.nearestGoody(cells.get(0).getLoc(), grid) ).size();
+		int distBlinky = BFSPath.getPath( grid, cells.get(1).getLoc(), cells.get(0).getLoc()  ).size();
+		int distInky = BFSPath.getPath( grid, cells.get(2).getLoc(), cells.get(0).getLoc()  ).size();
+		System.out.printf("Pellet: %d\nBlinky: %d\nInky: %d\n", distPellet, distBlinky, distInky);
+		return (WIN_VALUE - distPellet) + (LOSS_VALUE + distBlinky + distInky);
 	}
 
 	/* Current eval procedure
 	 *	V = (winValue - distPellet)	+ (lossReward + (distBlinky + distInky))
 	 */
-	public int evaluateBoard( PacCell[][] grid, PacmanCell pacman ) {
-		int distPellet = 0;
-		int distBlinky = 0;
-		int distInky = 0;
-		return (WIN_VALUE - distPellet) - (LOSS_VALUE + distBlinky + distInky);
-	}
 
 
-	PacCell[][] copyGrid ( PacCell[][] grid ) {
-		PacCell[][] gridCopy = new PacCell[ grid.length ][ grid[0].length ];
-
-		for (int i = 0; i < grid.length; i ++ ){
-			System.arraycopy( grid[i], 0, gridCopy[i], 0, grid[i].length );
-		}
-
-		return gridCopy;
-	}
 }
