@@ -99,7 +99,7 @@ public class PacSimRNNA implements PacAction {
                if ( nearestFoods.size() > 1 ) { // Here we check if we have more than 1 path; if so iterate a copy for each possible path.
                   for (int j = 1; j < nearestFoods.size(); j++){ //start at 1 since we're going to do the first path anyway.
                      RNNAPath tempCopy = rnnaPaths.get(i);
-		  // TODO: Create a shallow copy of the current rnna path instead of this.
+		                // TODO: Create a shallow copy of the current rnna path instead of this.
                      
                      // tempCopy.addPointToPath(dest.get(nearestFoods.get(j)), nearestFoods.get(j));
                      System.out.println(tempCopy);
@@ -156,12 +156,12 @@ public class PacSimRNNA implements PacAction {
 }
 
 class RNNAPath implements Comparable<RNNAPath> {
-   private List<Point> path;            // ordered list of food pellets
    private List<Integer> costBreakup;   // only used for toString, just used to show the costs between each pellet 
-   private int totalCost = 0;           // total cost of the current path
    private int[][] costTable;
-   private boolean[] usedIndex;
    private int lastIndex;
+   private List<Point> path;            // ordered list of food pellets
+   private int totalCost = 0;           // total cost of the current path
+   private boolean[] usedIndex;
 
    public RNNAPath (Point pt, int[][] costTable, int ind, int j, int size) {
       this.path = new ArrayList<Point>(); 
