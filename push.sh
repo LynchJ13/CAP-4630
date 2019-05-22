@@ -4,5 +4,5 @@ read desc
 git add .
 git commit -m "$desc"
 git push
-echo Changes successfully pushed. Press any key to close...
+echo Changes successfully pushed. Press Enter to close...
 read
