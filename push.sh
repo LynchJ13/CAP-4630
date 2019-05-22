@@ -1,6 +1,8 @@
 #!/bin/sh
+echo Enter a description of the changes being pushed:
+read desc
 git add .
-git commit -m "Test commit"
+git commit -m "$desc"
 git push
-echo Press Enter...
+echo Changes successfully pushed. Press any key to close...
 read
