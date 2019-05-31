@@ -10,7 +10,7 @@
 			set path to the closest pellets available
 
     Blinky: Follows Pacman
-
+aasdfasdfasdfasdfasdf
     Inky: goes for opposite side of pacman as blinky
     TODO:
     	- Find pacmans location
