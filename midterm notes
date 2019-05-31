@@ -1,9 +1,9 @@
-State Space search:
+﻿State Space search:
  - State Space: list of possible states in which the problem needs to be solved.
  - search state only has details needed for planning.
  - Successor Function:
  - Start
- - Goal
+ - Goalteset
 
 Types of Agents:
  - reflex: base decisions on current percepts & KB; do not consider future
